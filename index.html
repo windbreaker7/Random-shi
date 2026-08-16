@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Player</title>
+<style>
+  :root {
+    --bg: #1a1410;
+    --tape: #e8dcc8;
+    --tape-dark: #cbb894;
+    --reel: #2b221b;
+    --accent: #c9622a;
+    --text: #f4ede0;
+    --text-dim: #a89880;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    background-image:
+      radial-gradient(circle at 20% 20%, rgba(255,255,255,0.02), transparent 40%),
+      radial-gradient(circle at 80% 80%, rgba(255,255,255,0.02), transparent 40%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Courier New', monospace;
+    padding: 24px;
+  }
+  .deck {
+    background: linear-gradient(160deg, #3a2f26, #241c16);
+    border-radius: 18px;
+    padding: 22px;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+    border: 1px solid #4a3c2f;
+  }
+  .cassette {
+    background: var(--tape);
+    border-radius: 8px;
+    padding: 18px;
+    position: relative;
+    box-shadow: inset 0 0 0 2px var(--tape-dark), 0 4px 12px rgba(0,0,0,0.4);
+  }
+  .label {
+    text-align: center;
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: #6b5c42;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  .reels {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 30px;
+    margin-bottom: 12px;
+  }
+  .reel {
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: var(--reel);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 0 3px var(--tape-dark);
+  }
+  .reel::before {
+    content: '';
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--tape);
+  }
+  .reel.spin { animation: spin 2.2s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .tape-window { height: 3px; background: var(--tape-dark); margin-bottom: 6px; }
+  .track-name {
+    text-align: center;
+    font-size: 13px;
+    color: #5c4d38;
+    letter-spacing: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .progress-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .time {
+    font-size: 10px;
+    color: var(--text-dim);
+    min-width: 32px;
+  }
+  input[type=range] { flex: 1; accent-color: var(--accent); }
+  .controls {
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+  }
+  button { font-family: inherit; border: none; cursor: pointer; transition: transform 0.15s ease, background 0.15s ease; }
+  button:active { transform: scale(0.94); }
+  .play-btn {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: var(--accent); color: var(--text); font-size: 20px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 14px rgba(201,98,42,0.4);
+  }
+  .play-btn:hover { background: #d97038; }
+  .side-btn {
+    width: 42px; height: 42px; border-radius: 50%;
+    background: #4a3c2f; color: var(--text-dim); font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .side-btn:hover { background: #5c4c3b; }
+  .status {
+    text-align: center; margin-top: 14px; font-size: 11px;
+    color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; height: 14px;
+  }
+  .vol-row { display: flex; align-items: center; gap: 10px; margin-top: 16px; padding: 0 4px; }
+  .vol-row span { font-size: 10px; color: var(--text-dim); }
+  .playlist { margin-top: 18px; display: flex; flex-direction: column; gap: 6px; }
+  .debug {
+    margin-top: 18px;
+    background: #0d0a08;
+    border: 1px solid #4a3c2f;
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 10px;
+    line-height: 1.5;
+    color: #8fbf6f;
+    max-height: 160px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .debug .err { color: #e0664a; }
+  .debug .ok { color: #8fbf6f; }
+  .debug-title {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-top: 16px;
+    margin-bottom: 6px;
+  }
+  .track-btn {
+    background: transparent; color: var(--text-dim); text-align: left;
+    padding: 8px 10px; border-radius: 6px; font-size: 12px; letter-spacing: 0.5px;
+    display: flex; justify-content: space-between; width: 100%;
+  }
+  .track-btn:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+  .track-btn.active { background: rgba(201,98,42,0.15); color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="deck">
+  <div class="cassette">
+    <div class="label">Now Playing</div>
+    <div class="reels">
+      <div class="reel" id="reelL"></div>
+      <div class="reel" id="reelR"></div>
+    </div>
+    <div class="tape-window"></div>
+    <div class="track-name" id="trackName"></div>
+  </div>
+
+  <div class="progress-row">
+    <span class="time" id="curTime">0:00</span>
+    <input type="range" id="seek" min="0" max="100" value="0">
+    <span class="time" id="durTime">0:00</span>
+  </div>
+
+  <div class="controls">
+    <button class="side-btn" id="prevBtn">⏮</button>
+    <button class="play-btn" id="playBtn">▶</button>
+    <button class="side-btn" id="nextBtn">⏭</button>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <div class="vol-row">
+    <span>VOL</span>
+    <input type="range" id="volume" min="0" max="100" value="70">
+  </div>
+
+  <div class="playlist" id="playlist"></div>
+
+  <div class="debug-title">Debug Log</div>
+  <div class="debug" id="debug"></div>
+</div>
+
+<audio id="audio" preload="metadata"></audio>
+
+<script>
+const tracks = [
+  { name: "Red Dawn", src: "Red_Dawn.ogg" },
+  { name: "American Caligula", src: "American_Caligula.ogg" },
+  { name: "The Dragon's Roar", src: "The_Dragon_s_Roar.ogg" },
+  { name: "The New Order (Main Theme)", src: "The_New_Order_Main_Theme.ogg" }
+];
+
+let currentTrack = 0;
+let isPlaying = false;
+
+const audio = document.getElementById('audio');
+const playBtn = document.getElementById('playBtn');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const trackNameEl = document.getElementById('trackName');
+const statusEl = document.getElementById('status');
+const volumeSlider = document.getElementById('volume');
+const seek = document.getElementById('seek');
+const curTimeEl = document.getElementById('curTime');
+const durTimeEl = document.getElementById('durTime');
+const reelL = document.getElementById('reelL');
+const reelR = document.getElementById('reelR');
+const playlistEl = document.getElementById('playlist');
+const debugEl = document.getElementById('debug');
+
+function log(msg, isErr) {
+  const line = document.createElement('div');
+  line.className = isErr ? 'err' : 'ok';
+  const t = new Date().toLocaleTimeString();
+  line.textContent = '[' + t + '] ' + msg;
+  debugEl.appendChild(line);
+  debugEl.scrollTop = debugEl.scrollHeight;
+  console.log(msg);
+}
+
+log('page location: ' + window.location.href);
+log('protocol: ' + window.location.protocol + (window.location.protocol === 'file:' ? '  (file:// can block audio in some browsers, e.g. Chrome)' : ''));
+
+function fmtTime(sec) {
+  if (!isFinite(sec)) return '0:00';
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60).toString().padStart(2, '0');
+  return m + ':' + s;
+}
+
+function buildPlaylist() {
+  playlistEl.innerHTML = '';
+  tracks.forEach((t, i) => {
+    const b = document.createElement('button');
+    b.className = 'track-btn' + (i === currentTrack ? ' active' : '');
+    b.innerHTML = '<span>' + (i + 1) + '.  ' + t.name + '</span>';
+    b.onclick = () => loadTrack(i, true);
+    playlistEl.appendChild(b);
+  });
+}
+
+function loadTrack(i, autoplay) {
+  currentTrack = (i + tracks.length) % tracks.length;
+  const t = tracks[currentTrack];
+  log('loading track: "' + t.name + '" -> src="' + t.src + '"');
+  audio.src = t.src;
+  trackNameEl.textContent = t.name;
+  buildPlaylist();
+  if (autoplay) {
+    audio.play()
+      .then(() => log('play() resolved OK for ' + t.src))
+      .catch(err => log('play() FAILED for ' + t.src + ' — ' + err.name + ': ' + err.message, true));
+  }
+}
+
+function setPlayingUI(playing) {
+  isPlaying = playing;
+  playBtn.textContent = playing ? '❚❚' : '▶';
+  statusEl.textContent = playing ? '▸ playing' : '';
+  reelL.classList.toggle('spin', playing);
+  reelR.classList.toggle('spin', playing);
+}
+
+playBtn.onclick = () => {
+  if (isPlaying) {
+    audio.pause();
+  } else {
+    audio.play().catch(() => {});
+  }
+};
+prevBtn.onclick = () => loadTrack(currentTrack - 1, true);
+nextBtn.onclick = () => loadTrack(currentTrack + 1, true);
+
+audio.addEventListener('play', () => setPlayingUI(true));
+audio.addEventListener('pause', () => setPlayingUI(false));
+audio.addEventListener('ended', () => loadTrack(currentTrack + 1, true));
+
+audio.addEventListener('loadstart', () => log('loadstart: browser began fetching ' + audio.src));
+audio.addEventListener('canplay', () => log('canplay: ' + audio.src + ' is ready to play'));
+audio.addEventListener('error', () => {
+  const err = audio.error;
+  let reason = 'unknown';
+  if (err) {
+    const codes = {1:'MEDIA_ERR_ABORTED',2:'MEDIA_ERR_NETWORK',3:'MEDIA_ERR_DECODE',4:'MEDIA_ERR_SRC_NOT_SUPPORTED'};
+    reason = (codes[err.code] || err.code) + ' — this usually means the file was not found at that path, or the browser blocked local file access.';
+  }
+  log('AUDIO ERROR loading "' + audio.src + '": ' + reason, true);
+});
+
+audio.addEventListener('loadedmetadata', () => {
+  log('loadedmetadata: duration = ' + fmtTime(audio.duration));
+  durTimeEl.textContent = fmtTime(audio.duration);
+});
+audio.addEventListener('timeupdate', () => {
+  curTimeEl.textContent = fmtTime(audio.currentTime);
+  if (audio.duration) seek.value = (audio.currentTime / audio.duration) * 100;
+});
+seek.addEventListener('input', () => {
+  if (audio.duration) audio.currentTime = (seek.value / 100) * audio.duration;
+});
+
+volumeSlider.oninput = () => { audio.volume = volumeSlider.value / 100; };
+audio.volume = volumeSlider.value / 100;
+
+loadTrack(0, false);
+</script>
+
+</body>
+</html>
